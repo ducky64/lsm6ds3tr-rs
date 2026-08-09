@@ -2,38 +2,10 @@
 
 mod registers;
 pub use registers::*;
+mod transport;
+use transport::*;
 
 use embedded_hal_async::i2c::I2c;
-
-/// Transport layer that supports both SPI and I2C
-#[allow(async_fn_in_trait)]
-pub trait Transport {
-    type Error;
-    async fn write_u8(&mut self, addr: u8, data: u8) -> Result<(), Self::Error>;
-    async fn read(&mut self, addr: u8, buffer: &mut [u8]) -> Result<(), Self::Error>;
-}
-
-pub struct I2cTransport<I2cType> {
-    i2c: I2cType,
-    address: u8,
-}
-
-impl<I2cType> Transport for I2cTransport<I2cType>
-where
-    I2cType: I2c,
-{
-    type Error = I2cType::Error;
-
-    async fn write_u8(&mut self, addr: u8, data: u8) -> Result<(), I2cType::Error> {
-        self.i2c.write(self.address, &[addr, data]).await?;
-        Ok(())
-    }
-
-    async fn read(&mut self, addr: u8, buffer: &mut [u8]) -> Result<(), I2cType::Error> {
-        self.i2c.write_read(self.address, &[addr], buffer).await?;
-        Ok(())
-    }
-}
 
 
 #[derive(Debug)]
@@ -53,25 +25,6 @@ where
     g_config: Option<(OdrG, FsG)>,
 }
 
-impl<I2cType> Lsm6ds3tr<I2cTransport<I2cType>>
-where
-    I2cType: I2c,
-{
-    const LSM6DS3TR_ID: u8 = 0x6A; // SA0 = 0
-
-    /// Creates a device with address with SA0=0
-    pub fn new(i2c: I2cType) -> Self {
-        Self {
-            transport: I2cTransport {
-                i2c,
-                address: Self::LSM6DS3TR_ID,
-            },
-            xl_config: None,
-            g_config: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum NormalizationError<TransportError> {
@@ -82,6 +35,30 @@ pub enum NormalizationError<TransportError> {
 impl<TransportError> From<TransportError> for NormalizationError<TransportError> {
     fn from(err: TransportError) -> Self {
         NormalizationError::Transport(err)
+    }
+}
+
+impl<I2cType> Lsm6ds3tr<I2cTransport<I2cType>>
+where
+    I2cType: I2c,
+{
+    const LSM6DS3TR_ID: u8 = 0x6A; // SA0 = 0
+
+    /// Creates a device with address with SA0=0
+    pub fn new(i2c: I2cType) -> Self {
+        Self::new_with_sa0(i2c, 0)
+    }
+    
+    /// Creates a device with SA0 offset (0 or 1)
+    pub fn new_with_sa0(i2c: I2cType, sa0: u8) -> Self {
+        Self {
+            transport: I2cTransport {
+                i2c,
+                address: Self::LSM6DS3TR_ID + sa0,
+            },
+            xl_config: None,
+            g_config: None,
+        }
     }
 }
 
