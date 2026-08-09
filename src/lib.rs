@@ -5,9 +5,8 @@ pub use registers::*;
 
 use embedded_hal_async::i2c::I2c;
 
-// TODO separate out into own repo
-
 /// Transport layer that supports both SPI and I2C
+#[allow(async_fn_in_trait)]
 pub trait Transport {
     type Error;
     async fn write_u8(&mut self, addr: u8, data: u8) -> Result<(), Self::Error>;
@@ -37,7 +36,8 @@ where
 }
 
 
-#[derive(Debug, defmt::Format)] // TODO feature gate
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct NewDataAvailable {
     pub temp: bool,
     pub gyro: bool,
@@ -72,7 +72,8 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, defmt::Format)] // TODO feature gate
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum NormalizationError<TransportError> {
     Transport(TransportError),
     NotConfigured,
