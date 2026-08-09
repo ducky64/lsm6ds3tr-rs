@@ -1,8 +1,8 @@
 #![no_std]
 
 mod registers;
+pub use registers::*;
 
-use bilge::prelude::*;
 use embedded_hal_async::i2c::I2c;
 
 // TODO separate out into own repo
@@ -36,199 +36,6 @@ where
     }
 }
 
-#[allow(dead_code)]
-#[repr(u8)]
-enum RegisterAddress {
-    WhoAmI = 0x0F,
-    Ctrl1Xl = 0x10,
-    Ctrl2G = 0x11,
-    Ctrl3C = 0x12,
-    StatusReg = 0x1E,
-    OutTempL = 0x20,
-    OutTempH = 0x21,
-    OutXLG = 0x22,  // gyro pitch rate low
-    OutXHG = 0x23,  // gyro pitch rate high
-    OutYLG = 0x24,  // gyro roll rate low
-    OutYHG = 0x25,  // gyro roll rate high
-    OutZLG = 0x26,  // gyro yaw rate low
-    OutZHG = 0x27,  // gyro yaw rate high
-    OutXLXl = 0x28, // accelerometer x low
-    OutXHXl = 0x29, // accelerometer x high
-    OutYLXl = 0x2A, // accelerometer y low
-    OutYHXl = 0x2B, // accelerometer y high
-    OutZLXl = 0x2C, // accelerometer z low
-    OutZHXl = 0x2D, // accelerometer z high
-}
-
-#[bitsize(4)]
-#[derive(FromBits, Clone, Copy)]
-pub enum OdrXl {
-    PowerDown = 0b0000,
-    Hz12_5 = 0b0001,
-    Hz26 = 0b0010,
-    Hz52 = 0b0011,
-    Hz104 = 0b0100,
-    Hz208 = 0b0101,
-    Hz416 = 0b0110,
-    Hz833 = 0b0111,
-    Hz1k66 = 0b1000,
-    Hz3k33 = 0b1001,
-    Hz6k66 = 0b1010,
-    Hz1_6 = 0b1011,
-    #[fallback]
-    Reserved,
-}
-
-impl OdrXl {
-    pub fn new_at_least(freq_hz: u16) -> Self {
-        match freq_hz {
-            0..12 => Self::Hz12_5,
-            _ if freq_hz <= 12 => Self::Hz12_5,
-            _ if freq_hz <= 26 => Self::Hz26,
-            _ if freq_hz <= 52 => Self::Hz52,
-            _ if freq_hz <= 104 => Self::Hz104,
-            _ if freq_hz <= 208 => Self::Hz208,
-            _ if freq_hz <= 416 => Self::Hz416,
-            _ if freq_hz <= 833 => Self::Hz833,
-            _ if freq_hz <= 1660 => Self::Hz1k66,
-            _ if freq_hz <= 3330 => Self::Hz3k33,
-            _ => Self::Hz6k66,
-        }
-    }
-}
-
-#[bitsize(2)]
-#[derive(FromBits, Clone, Copy)]
-pub enum FsXl {
-    G2 = 0b00,
-    G16 = 0b01,
-    G4 = 0b10,
-    G8 = 0b11,
-}
-
-impl FsXl {
-    pub fn sensitivity_mg_lsb(&self) -> f32 {
-        // direct datasheet values
-        match self {
-            FsXl::G2 => 0.061,
-            FsXl::G4 => 0.122,
-            FsXl::G8 => 0.244,
-            FsXl::G16 => 0.488,
-        }
-    }
-}
-
-#[bitsize(1)]
-#[derive(FromBits, Clone, Copy)]
-pub enum Bw0Xl {
-    Hz1k5 = 0b0,
-    Hz400 = 0b1,
-}
-
-#[bitsize(8)]
-#[derive(FromBits, Clone, Copy)]
-struct Ctrl1Struct {
-    bw0_xl: Bw0Xl,
-    lpf1_bw_sel: bool,
-    fs_xl: FsXl,
-    odr_xl: OdrXl,
-}
-
-#[bitsize(4)]
-#[derive(FromBits, Clone, Copy)]
-pub enum OdrG {
-    PowerDown = 0b0000,
-    Hz12_5 = 0b0001,
-    Hz26 = 0b0010,
-    Hz52 = 0b0011,
-    Hz104 = 0b0100,
-    Hz208 = 0b0101,
-    Hz416 = 0b0110,
-    Hz833 = 0b0111,
-    Hz1k66 = 0b1000,
-    Hz3k33 = 0b1001,
-    Hz6k66 = 0b1010,
-    #[fallback]
-    Reserved,
-}
-
-impl OdrG {
-    pub fn new_at_least(freq_hz: u16) -> Self {
-        match freq_hz {
-            0..=12 => Self::Hz12_5,
-            _ if freq_hz <= 26 => Self::Hz26,
-            _ if freq_hz <= 52 => Self::Hz52,
-            _ if freq_hz <= 104 => Self::Hz104,
-            _ if freq_hz <= 208 => Self::Hz208,
-            _ if freq_hz <= 416 => Self::Hz416,
-            _ if freq_hz <= 833 => Self::Hz833,
-            _ if freq_hz <= 1660 => Self::Hz1k66,
-            _ if freq_hz <= 3330 => Self::Hz3k33,
-            _ => Self::Hz6k66,
-        }
-    }
-}
-
-#[bitsize(3)]
-#[derive(FromBits, Clone, Copy)]
-pub enum FsG {
-    Dps125 = 0b001,
-    Dps245 = 0b000,
-    Dps500 = 0b010,
-    Dps1000 = 0b100,
-    Dps2000 = 0b110,
-    #[fallback]
-    Reserved,
-}
-
-impl FsG {
-    pub fn sensitivity_mdps_lsb(&self) -> f32 {
-        // direct datasheet values
-        match self {
-            FsG::Dps125 => 4.375,
-            FsG::Dps245 => 8.75,
-            FsG::Dps500 => 17.50,
-            FsG::Dps1000 => 35.0,
-            FsG::Dps2000 => 70.0,
-            FsG::Reserved => 0.0, // should not happen
-        }
-    }
-}
-
-#[bitsize(8)]
-#[derive(FromBits, Clone, Copy)]
-struct Ctrl2Struct {
-    _reserved: u1,
-    fs_g: FsG,
-    odr_g: OdrG,
-}
-
-#[bitsize(8)]
-#[derive(FromBits, Clone, Copy)]
-struct Ctrl3CStruct {
-    sw_reset: bool,
-    ble: bool,
-    if_inc: bool,
-    sim: bool,
-    pp_od: bool,
-    h_lactive: bool,
-    bdu: bool,
-    boot: bool,
-}
-impl Ctrl3CStruct {
-    pub fn default() -> Self {
-        Self::new(false, false, true, false, false, false, false, false)
-    }
-}
-
-#[bitsize(8)]
-#[derive(FromBits, Clone, Copy)]
-struct StatusRegStruct {
-    xlda: bool,
-    gda: bool,
-    tda: bool,
-    _reserved: u5,
-}
 
 #[derive(Debug, defmt::Format)] // TODO feature gate
 pub struct NewDataAvailable {
@@ -302,7 +109,7 @@ where
         let mut ctrl3 = Ctrl3CStruct::default();
         ctrl3.set_sw_reset(true);
         self.transport
-            .write_u8(RegisterAddress::Ctrl3C as u8, ctrl3.value)
+            .write_u8(RegisterAddress::Ctrl3C as u8, u8::from(ctrl3))
             .await?;
         Ok(())
     }
@@ -311,7 +118,7 @@ where
     pub async fn config_xl(&mut self, odr: OdrXl, fs: FsXl) -> Result<(), TransportType::Error> {
         let ctrl1 = Ctrl1Struct::new(Bw0Xl::Hz1k5, false, fs, odr);
         self.transport
-            .write_u8(RegisterAddress::Ctrl1Xl as u8, ctrl1.value)
+            .write_u8(RegisterAddress::Ctrl1Xl as u8, u8::from(ctrl1))
             .await?;
         self.xl_config = Some((odr, fs));
         Ok(())
@@ -321,7 +128,7 @@ where
     pub async fn config_g(&mut self, odr: OdrG, fs: FsG) -> Result<(), TransportType::Error> {
         let ctrl2 = Ctrl2Struct::new(fs, odr);
         self.transport
-            .write_u8(RegisterAddress::Ctrl2G as u8, ctrl2.value)
+            .write_u8(RegisterAddress::Ctrl2G as u8, u8::from(ctrl2))
             .await?;
         self.g_config = Some((odr, fs));
         Ok(())
