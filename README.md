@@ -3,6 +3,8 @@ A no-std, no-alloc, embedded-hal-async driver for the LSM6DS3TR-C IMU with raw a
 
 I2C only. Architecturally extensible to SPI, but I don't have SPI hardware to test against.
 
+Tested on nRF52840, but should be compatible with anything implementing embedded-hal-async.
+
 ## Example
 
 ```rust
