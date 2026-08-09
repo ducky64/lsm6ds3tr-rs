@@ -45,12 +45,12 @@ where
     const LSM6DS3TR_ID: u8 = 0x6A; // SA0 = 0
 
     /// Creates a device with address with SA0=0
-    pub fn new(i2c: I2cType) -> Self {
-        Self::new_with_sa0(i2c, 0)
+    pub fn new_i2c(i2c: I2cType) -> Self {
+        Self::new_i2c_with_sa0(i2c, 0)
     }
-    
+
     /// Creates a device with SA0 offset (0 or 1)
-    pub fn new_with_sa0(i2c: I2cType, sa0: u8) -> Self {
+    pub fn new_i2c_with_sa0(i2c: I2cType, sa0: u8) -> Self {
         Self {
             transport: I2cTransport {
                 i2c,
